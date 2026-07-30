@@ -2,16 +2,18 @@
   "name": "momently",
   "version": "0.1.0",
   "private": true,
+
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
-  },
+  "dev": "next dev",
+   "build": "prisma generate && next build",
+  "postinstall": "prisma generate",
+  "start": "next start",
+  "lint": "next lint",
+  "db:migrate": "prisma migrate dev",
+  "db:generate": "prisma generate",
+  "db:seed": "tsx prisma/seed.ts",
+  "db:studio": "prisma studio"
+},
   "dependencies": {
     "next": "15.0.3",
     "react": "^18.3.1",
