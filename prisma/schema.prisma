@@ -1,0 +1,262 @@
+// ============================================================================
+// Momently — Database Schema
+// ------------------------------------------------------------------------
+// This schema models the core SaaS domain: Users create Projects from
+// Templates, each Project holds an ordered collection of Media, and
+// Orders record payment for premium Templates/Projects.
+//
+// Auth, payments, uploads, and API routes are intentionally NOT implemented
+// here — this file defines the data layer only.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+/// Application-level role. Used for coarse authorization (e.g. admin dashboard
+/// access) — the actual auth/session implementation is out of scope here.
+enum Role {
+  USER
+  ADMIN
+}
+
+/// Lifecycle state of a Project. DRAFT projects are only visible to their
+/// owner; PUBLISHED projects are the live, shareable memory page.
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Type of a Media asset attached to a Project.
+enum MediaType {
+  IMAGE
+  VIDEO
+  MUSIC
+}
+
+/// Status of a payment associated with an Order. Mirrors typical payment
+/// gateway lifecycle (Razorpay et al.): a PENDING order transitions to either
+/// SUCCESS or FAILED once the gateway confirms.
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ----------------------------------------------------------------------------
+// User
+// ----------------------------------------------------------------------------
+
+/// A Momently account. `password` is nullable to support OAuth-only accounts
+/// that never set a local password (auth strategy itself is out of scope
+/// here — this model just needs to be shape-compatible with either flow).
+model User {
+  id            String    @id @default(cuid())
+  fullName      String
+  email         String    @unique
+  emailVerified DateTime? // null until the user clicks their verification link
+  password      String? // nullable: OAuth-only accounts have no local password
+  avatar        String?
+  role          Role      @default(USER)
+
+  // A user builds many memory-page Projects and may make many Payments
+  // (one per premium Template/Project purchase, to unlock publishing).
+  projects Project[]
+  payments Payment[]
+  authTokens AuthToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Frequent lookups: authentication by email, admin dashboards filtering by role.
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ----------------------------------------------------------------------------
+// Template
+// ----------------------------------------------------------------------------
+
+/// A marketplace template a Project can be created from. Templates are
+/// authored/managed independently of any single user's Project.
+model Template {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  category      String
+  thumbnail     String
+  previewImages String[] // gallery of preview screenshots (Postgres text[])
+  description   String   @db.Text
+  isPremium     Boolean  @default(false)
+  price         Decimal  @default(0) @db.Decimal(10, 2)
+
+  // A single template can be the basis for many user Projects.
+  projects Project[]
+
+  createdAt DateTime @default(now())
+
+  // Marketplace browsing: filter by category, premium/free, and recency.
+  @@index([category])
+  @@index([isPremium])
+  @@index([createdAt])
+  @@map("templates")
+}
+
+// ----------------------------------------------------------------------------
+// Project
+// ----------------------------------------------------------------------------
+
+/// A user's memory page — created from a Template, customized in the
+/// studio, and eventually published. Holds the per-page theme/branding and
+/// owns its Media collection.
+model Project {
+  id     String        @id @default(cuid())
+  title  String
+  slug   String        @unique
+  status ProjectStatus @default(DRAFT)
+
+  coverImage String?
+
+  // Studio theme fields (kept as plain scalars — simple, queryable, and
+  // matches how the customization studio edits them one field at a time).
+  theme         String  @default("classic")
+  font          String  @default("inter")
+  primaryColor  String  @default("#7A1E2B")
+  secondaryColor String @default("#F1D6D9")
+
+  // Owning user — deleting a user deletes their projects (and, transitively,
+  // each project's media/orders) so no orphaned content is left behind.
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Source template — a template in active use by projects should not be
+  // silently deletable, so this uses Restrict rather than Cascade/SetNull.
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  media    Media[]
+  payments Payment[]
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Dashboard/listing queries: "my projects", published feed, per-template usage.
+  @@index([userId])
+  @@index([templateId])
+  @@index([status])
+  @@map("projects")
+}
+
+// ----------------------------------------------------------------------------
+// Media
+// ----------------------------------------------------------------------------
+
+/// A single ordered media asset (photo, video, or music track) belonging to
+/// a Project. `order` drives display sequence in the gallery/timeline.
+/// `publicId`/`fileSize`/`mimeType` describe the underlying storage asset
+/// (Cloudinary today — see `lib/cloudinary.ts`'s `MediaStorage` abstraction);
+/// `publicId` is nullable because locally-mocked/blob-fallback media (e.g. an
+/// upload that failed to reach storage) has no remote asset to reference.
+model Media {
+  id       String    @id @default(cuid())
+  type     MediaType
+  url      String
+  publicId String?
+  filename String
+  fileSize Int       @default(0)
+  mimeType String    @default("")
+  order    Int       @default(0)
+
+  // Deleting a project deletes all of its media — media has no meaning
+  // independent of its parent project.
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Rendering a project's gallery: fetch by project, ordered, filtered by type.
+  @@index([projectId])
+  @@index([type])
+  @@index([projectId, order])
+  @@map("media")
+}
+
+// ----------------------------------------------------------------------------
+// Order
+// ----------------------------------------------------------------------------
+
+/// A payment record for a premium Template/Project. `razorpayOrderId` is
+/// unique-but-nullable: it's set once the gateway order is created, and no
+/// two Orders should ever reference the same gateway order.
+/// A Razorpay payment for publishing a Project built from a premium
+/// Template. `razorpayOrderId` is set the moment a checkout order is
+/// created server-side; `razorpayPaymentId` is only populated after
+/// Razorpay confirms the payment and its signature is verified — a row
+/// with `status: PENDING` and no `razorpayPaymentId` means checkout was
+/// started but never completed (e.g. the user closed the modal).
+model Payment {
+  id                String        @id @default(cuid())
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+
+  // Deleting a user's account or a project cleans up its payment history
+  // too. (In a real production system you may prefer to keep financial
+  // records and use a soft-delete/anonymize strategy instead — flagged
+  // here as a deliberate simplification for this stage of the schema.)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // Billing history lookups, payment-gateway signature verification, and
+  // "does this project have a successful payment yet" publish-gate checks.
+  @@index([userId])
+  @@index([projectId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ----------------------------------------------------------------------------
+// Password reset & email verification — one shared, short-lived token model
+// ----------------------------------------------------------------------------
+
+enum TokenPurpose {
+  PASSWORD_RESET
+  EMAIL_VERIFY
+}
+
+/// A single-use, short-lived token emailed to a user to prove they control
+/// that email address — used for both "forgot password" and "verify your
+/// email." One shared model instead of two near-identical ones.
+model AuthToken {
+  id        String       @id @default(cuid())
+  token     String       @unique
+  purpose   TokenPurpose
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  // Looking up a token on click, and cleaning up a user's old tokens when
+  // issuing a new one.
+  @@index([userId, purpose])
+  @@map("auth_tokens")
+}
