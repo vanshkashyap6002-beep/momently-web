@@ -62,4 +62,16 @@ export const projectRepository = {
   delete(id: string, db: Db = prisma): Promise<Project> {
     return db.project.delete({ where: { id } });
   },
+
+  // ---- Admin Panel addition below — existing methods above are untouched ----
+
+  findAllForAdmin(db: Db = prisma) {
+    return db.project.findMany({
+      include: {
+        user: { select: { id: true, fullName: true, email: true } },
+        template: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
 };

@@ -37,4 +37,16 @@ export const paymentRepository = {
     });
     return result.count;
   },
+
+  // ---- Admin Panel addition below — existing methods above are untouched ----
+
+  findAllForAdmin(db: Db = prisma) {
+    return db.payment.findMany({
+      include: {
+        user: { select: { id: true, fullName: true, email: true } },
+        project: { select: { id: true, title: true, template: { select: { title: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
 };

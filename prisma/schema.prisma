@@ -68,6 +68,12 @@ model User {
   avatar        String?
   role          Role      @default(USER)
 
+  // Admin Panel additions — both additive/defaulted, so every existing row
+  // is unaffected. isSuspended blocks login (checked in lib/auth.ts's
+  // authorize()); lastLoginAt powers the "Active Users" dashboard metric.
+  isSuspended Boolean   @default(false)
+  lastLoginAt DateTime?
+
   // A user builds many memory-page Projects and may make many Payments
   // (one per premium Template/Project purchase, to unlock publishing).
   projects Project[]
@@ -99,6 +105,11 @@ model Template {
   description   String   @db.Text
   isPremium     Boolean  @default(false)
   price         Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Admin Panel additions — both defaulted so every existing template
+  // stays visible/behaves the same until an admin explicitly changes it.
+  isEnabled  Boolean @default(true) // disabled templates are hidden from the Marketplace (enforced wherever templates are listed, not changed in this pass — see admin panel report)
+  isFeatured Boolean @default(false)
 
   // A single template can be the basis for many user Projects.
   projects Project[]
@@ -259,4 +270,23 @@ model AuthToken {
   // issuing a new one.
   @@index([userId, purpose])
   @@map("auth_tokens")
+}
+
+// ----------------------------------------------------------------------------
+// Settings — Admin Panel only
+// ----------------------------------------------------------------------------
+
+/// Single-row site settings, managed from the Admin Panel. Always read/written
+/// via id "singleton" — see settings.repository.ts. Third-party credentials
+/// (SMTP/Razorpay/Supabase) are deliberately NOT stored here: they stay as
+/// environment variables (the existing, correct pattern for secrets) and the
+/// Admin Panel only shows whether each is configured, never their values.
+model Settings {
+  id              String  @id @default("singleton")
+  siteName        String  @default("Momently")
+  maintenanceMode Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
 }

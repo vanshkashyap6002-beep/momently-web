@@ -30,4 +30,18 @@ export const templateRepository = {
   create(data: Prisma.TemplateCreateInput, db: Db = prisma): Promise<Template> {
     return db.template.create({ data });
   },
+
+  // ---- Admin Panel additions below — existing methods above are untouched ----
+
+  findAllForAdmin(db: Db = prisma): Promise<Template[]> {
+    return db.template.findMany({ orderBy: { createdAt: "desc" } });
+  },
+
+  update(id: string, data: Prisma.TemplateUpdateInput, db: Db = prisma): Promise<Template> {
+    return db.template.update({ where: { id }, data });
+  },
+
+  delete(id: string, db: Db = prisma): Promise<void> {
+    return db.template.delete({ where: { id } }).then(() => undefined);
+  },
 };

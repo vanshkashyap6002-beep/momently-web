@@ -38,9 +38,16 @@ export const authOptions: AuthOptions = {
         const user = await prisma.user.findUnique({ where: { email } });
 
         if (!user?.password) return null;
+        // Admin Panel addition: a suspended account can no longer sign in.
+        // Existing users (isSuspended defaults to false) are unaffected.
+        if (user.isSuspended) return null;
 
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
+
+        // Fire-and-forget: powers the Admin Panel's "Active Users" metric.
+        // Never blocks or fails the login itself.
+        prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
 
         return {
           id: user.id,

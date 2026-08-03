@@ -8,6 +8,7 @@ export type ErrorCode =
   | "VALIDATION_ERROR"
   | "NOT_FOUND"
   | "UNAUTHORIZED"
+  | "FORBIDDEN"
   | "PAYMENT_REQUIRED"
   | "RATE_LIMITED"
   | "INTERNAL_ERROR";

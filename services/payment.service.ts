@@ -140,4 +140,13 @@ export const paymentService = {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     return paymentRepository.expireStalePending(oneHourAgo);
   },
+
+  // ---- Admin Panel addition below — existing methods above are untouched ----
+
+  /** Backs both the admin "Payments" and "Orders" views — there's only
+   * one Payment model in this schema (no separate Order model), so both
+   * tables read the same data, just presented with different columns. */
+  getAllPaymentsForAdmin() {
+    return paymentRepository.findAllForAdmin();
+  },
 };

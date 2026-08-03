@@ -209,4 +209,19 @@ export const projectService = {
   unpublishProject(userId: string, projectId: string): Promise<ProjectWithMedia> {
     return updateOwnedProject(userId, projectId, { status: "DRAFT" });
   },
+
+  // ---- Admin Panel additions below — existing methods above are untouched ----
+
+  /** No ownership check — only ever called from an admin.actions.ts entry
+   * point already gated by requireAdminUserId(), so any project is fair
+   * game for the Admin Panel's project list/moderation view. */
+  getAllProjectsForAdmin() {
+    return projectRepository.findAllForAdmin();
+  },
+
+  async deleteProjectAsAdmin(projectId: string): Promise<void> {
+    const existing = await projectRepository.findById(projectId);
+    if (!existing) throw new NotFoundError("Project not found.");
+    await projectRepository.delete(projectId);
+  },
 };

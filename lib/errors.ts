@@ -46,6 +46,16 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/** 403 — signed in, but lacking the required role (Admin Panel only).
+ * Unlike NotFoundError's deliberate 404-for-both approach on ownership
+ * checks, there's nothing to hide here — the Admin Panel's existence
+ * itself isn't a secret worth protecting via ambiguity, only its data is. */
+export class ForbiddenError extends AppError {
+  constructor(message = "You do not have permission to do that.") {
+    super(message, 403, "FORBIDDEN");
+  }
+}
+
 /** 402 — the project's template is premium and has no successful Payment
  * yet; publishing is blocked until checkout completes. */
 export class PaymentRequiredError extends AppError {
