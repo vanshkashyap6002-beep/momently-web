@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { AdminShell } from "@/components/AdminPanel/AdminShell";
 
+// Explicit, even though getServerSession() reading cookies already
+// implicitly forces this — this route deals with per-user, per-request
+// data and must never be statically cached.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Admin — Momently",
   // Deliberately not linked anywhere in the app's nav/footer/sitemap;

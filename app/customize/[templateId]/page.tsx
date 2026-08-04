@@ -10,6 +10,11 @@ import { MemoryStudio } from "@/components/Customization/MemoryStudio";
 import { marketplaceTemplates } from "@/lib/marketplace-data";
 import type { EditableStudioState } from "@/types/studio";
 
+// Explicit, even though getServerSession() reading cookies already
+// implicitly forces this — this route deals with per-user, per-request
+// data and must never be statically cached.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Memory Studio — Momently",
   description: "Customize your memory page.",

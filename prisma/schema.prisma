@@ -14,8 +14,16 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // The pooled (Supavisor/PgBouncer) connection — used by the app at
+  // runtime. Supabase's direct connection (port 5432) is known to be
+  // unreliable from serverless platforms like Vercel; the pooled
+  // connection (port 6543) is what Supabase's own docs recommend for
+  // exactly this setup. See .env.example for the exact format.
+  url       = env("DATABASE_URL")
+  // The direct connection — used only by `prisma migrate`/`db push`,
+  // which need a non-pooled connection to run schema changes.
+  directUrl = env("DIRECT_URL")
 }
 
 // ----------------------------------------------------------------------------
