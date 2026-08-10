@@ -64,7 +64,7 @@ export function PhotoUploader() {
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const optimistic = filesToPhotos(files);
-    addPhotos(optimistic.map(({ file, ...photo }) => photo));
+    addPhotos(optimistic.map(({ file: _file, ...photo }) => photo));
     optimistic.forEach(({ id, file }) => uploadPhoto(id, file));
   }
 

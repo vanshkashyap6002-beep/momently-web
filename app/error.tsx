@@ -18,7 +18,7 @@ export default function GlobalError({
     <div className="flex min-h-screen flex-col items-center justify-center bg-paper dark:bg-ink px-6 text-center">
       <p className="font-display text-2xl text-ink dark:text-paper">Something went wrong.</p>
       <p className="mt-2 text-sm text-ink/55 dark:text-paper/55 max-w-sm">
-        That's on us, not you — please try again.
+        That&apos;s on us, not you — please try again.
       </p>
       <button
         onClick={reset}

@@ -2,7 +2,8 @@ import { mediaRepository } from "@/repositories/media.repository";
 import { projectRepository } from "@/repositories/project.repository";
 import { mediaStorage } from "@/lib/supabase-storage";
 import { UPLOAD_CONSTRAINTS } from "@/validators/media.schema";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, RateLimitError } from "@/lib/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { UploadKind, ReorderItem } from "@/types/media";
 import type { Media } from "@prisma/client";
 
@@ -29,6 +30,11 @@ async function uploadMediaOfKind(
   file: File,
   kind: UploadKind
 ): Promise<Media> {
+  const limit = await checkRateLimit(`media-upload:${userId}`, 30, 5 * 60);
+  if (!limit.allowed) {
+    throw new RateLimitError("Too many uploads in a short time. Please wait a few minutes and try again.");
+  }
+
   await assertProjectOwnership(projectId, userId);
   const constraint = UPLOAD_CONSTRAINTS[kind];
 

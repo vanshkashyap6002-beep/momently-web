@@ -28,7 +28,7 @@ export function VideoUploader() {
 
     if (newVideos.length === 0) return;
 
-    addVideos(newVideos.map(({ file, ...v }) => v));
+    addVideos(newVideos.map(({ file: _file, ...v }) => v));
     setUploadingIds((prev) => new Set([...prev, ...newVideos.map((v) => v.id)]));
 
     for (const video of newVideos) {

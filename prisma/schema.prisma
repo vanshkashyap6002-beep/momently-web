@@ -87,6 +87,8 @@ model User {
   projects Project[]
   payments Payment[]
   authTokens AuthToken[]
+  createdTemplates Template[] @relation("TemplateCreator")
+  profile Profile?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,6 +121,14 @@ model Template {
   isEnabled  Boolean @default(true) // disabled templates are hidden from the Marketplace (enforced wherever templates are listed, not changed in this pass — see admin panel report)
   isFeatured Boolean @default(false)
 
+  // User Profiles addition — nullable: every existing template is
+  // admin-authored (creatorId null). Populated once the Community Template
+  // System (submission workflow) lands; added now so that feature won't
+  // need its own migration. Powers a creator's public "Published
+  // Templates"/"Downloads" counts on their profile.
+  creatorId String?
+  creator   User?   @relation("TemplateCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+
   // A single template can be the basis for many user Projects.
   projects Project[]
 
@@ -128,6 +138,7 @@ model Template {
   @@index([category])
   @@index([isPremium])
   @@index([createdAt])
+  @@index([creatorId])
   @@map("templates")
 }
 
@@ -297,4 +308,39 @@ model Settings {
   updatedAt DateTime @updatedAt
 
   @@map("settings")
+}
+
+// ----------------------------------------------------------------------------
+// Profile — private + public-facing creator info, separate from User
+// ----------------------------------------------------------------------------
+
+/// One-to-one with User. Deliberately a separate model rather than more
+/// fields bolted onto User: keeps genuinely private data (birthday,
+/// anniversary, partner name, preferences) architecturally distinct from
+/// what the public profile query is allowed to touch — the public query
+/// (see profile.repository.ts) selects only the public-safe fields below
+/// and never even has the private ones in scope, rather than relying on
+/// remembering to strip them at the API boundary.
+model Profile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Private — never returned by the public profile query.
+  birthday    DateTime?
+  anniversary DateTime?
+  partnerName String?
+  preferences Json?
+
+  // Public-facing (only when isPublic is true — see "Never expose private
+  // data publicly" in the project brief).
+  displayName String? // public alias; falls back to User.fullName if unset
+  bio         String? @db.Text
+  isPublic    Boolean @default(false)
+  isVerified  Boolean @default(false) // set by an ADMIN only, never self-serve
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("profiles")
 }

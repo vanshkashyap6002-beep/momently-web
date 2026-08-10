@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Loader2 } from "lucide-react";
+import { GoogleSignInButton } from "@/components/AuthGoogleButton";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -101,6 +102,8 @@ export default function SignupPage() {
             {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
+
+        <GoogleSignInButton callbackUrl="/marketplace" />
 
         <p className="mt-6 text-sm text-ink/55 dark:text-paper/55">
           Already have an account?{" "}

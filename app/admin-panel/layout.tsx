@@ -34,7 +34,7 @@ export default async function AdminPanelLayout({ children }: { children: React.R
           <p className="eyebrow">Admin Panel</p>
           <h1 className="mt-3 font-display text-2xl text-ink dark:text-paper">403 — Forbidden</h1>
           <p className="mt-2 text-sm text-ink/55 dark:text-paper/55">
-            You don't have permission to access this page.
+            You don&apos;t have permission to access this page.
           </p>
         </div>
       </div>

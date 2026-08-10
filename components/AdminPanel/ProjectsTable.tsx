@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Loader2, Trash2, Image as ImageIcon } from "lucide-react";
 import { StatusBadge } from "@/components/AdminPanel/StatusBadge";
 import { deleteProjectAsAdmin } from "@/app/actions/admin.actions";
@@ -57,9 +58,12 @@ export function ProjectsTable({ projects }: { projects: AdminProjectRow[] }) {
                 <td className="px-4 py-3">
                   {project.coverImage ? (
                     <a href={project.coverImage} target="_blank" rel="noreferrer">
-                      <img
+                      <Image
                         src={project.coverImage}
                         alt={project.title}
+                        width={56}
+                        height={40}
+                        unoptimized
                         className="h-10 w-14 rounded-md object-cover"
                       />
                     </a>
