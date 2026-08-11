@@ -44,4 +44,22 @@ export const templateRepository = {
   delete(id: string, db: Db = prisma): Promise<void> {
     return db.template.delete({ where: { id } }).then(() => undefined);
   },
+
+  // ---- Community Template System additions below — existing methods above are untouched ----
+
+  findManyByCreator(creatorId: string, db: Db = prisma): Promise<Template[]> {
+    return db.template.findMany({ where: { creatorId }, orderBy: { createdAt: "desc" } });
+  },
+
+  findByIdAndCreator(id: string, creatorId: string, db: Db = prisma): Promise<Template | null> {
+    return db.template.findFirst({ where: { id, creatorId } });
+  },
+
+  findPendingReview(db: Db = prisma) {
+    return db.template.findMany({
+      where: { reviewStatus: "PENDING_REVIEW" },
+      include: { creator: { select: { id: true, fullName: true, email: true } } },
+      orderBy: { submittedAt: "asc" },
+    });
+  },
 };

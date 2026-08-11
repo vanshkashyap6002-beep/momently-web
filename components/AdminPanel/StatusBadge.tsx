@@ -20,6 +20,15 @@ const statusTone: Record<string, keyof typeof toneClasses> = {
   SUSPENDED: "danger",
   ENABLED: "success",
   DISABLED: "neutral",
+  // Community Template System
+  PENDING_REVIEW: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+  NEEDS_CHANGES: "warning",
+  // Reports
+  OPEN: "warning",
+  REVIEWED: "success",
+  DISMISSED: "neutral",
 };
 
 export function StatusBadge({ status }: { status: string }) {
@@ -31,7 +40,7 @@ export function StatusBadge({ status }: { status: string }) {
         toneClasses[tone]
       )}
     >
-      {status.toLowerCase()}
+      {status.toLowerCase().replace(/_/g, " ")}
     </span>
   );
 }

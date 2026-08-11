@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Navbar } from "@/components/layout/navbar";
@@ -29,6 +30,13 @@ export default async function ProfilePage() {
             Personal details stay private by default. Only what you choose to make public — and only
             when you turn that on below — ever shows on your public creator page.
           </p>
+
+          <Link
+            href="/account/templates"
+            className="mt-4 inline-block text-xs text-love dark:text-blush hover:underline"
+          >
+            Manage your templates →
+          </Link>
 
           <div className="mt-10">
             <ProfileForm profile={profile} userId={session.user.id} />

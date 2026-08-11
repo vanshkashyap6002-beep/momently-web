@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { profileService } from "@/services/profile.service";
 import { NotFoundError } from "@/lib/errors";
+import { ReportButton } from "@/components/ReportButton";
 
 export default async function CreatorProfilePage({
   params,
@@ -68,6 +69,10 @@ export default async function CreatorProfilePage({
               No published templates yet.
             </p>
           )}
+
+          <div className="mt-8 flex justify-center">
+            <ReportButton targetType="CREATOR" targetUserId={userId} />
+          </div>
         </div>
       </main>
       <Footer />

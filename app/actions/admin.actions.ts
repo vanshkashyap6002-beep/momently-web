@@ -10,6 +10,8 @@ import { projectService } from "@/services/project.service";
 import { templateService } from "@/services/template.service";
 import { paymentService } from "@/services/payment.service";
 import { settingsService } from "@/services/settings.service";
+import { communityTemplateService } from "@/services/community-template.service";
+import { reportService } from "@/services/report.service";
 import {
   userIdSchema,
   changeRoleSchema,
@@ -17,6 +19,8 @@ import {
   updateSettingsSchema,
 } from "@/validators/admin.schema";
 import { createTemplateSchema, updateTemplateSchema } from "@/validators/template.schema";
+import { reviewDecisionSchema } from "@/validators/community-template.schema";
+import { updateReportStatusSchema } from "@/validators/report.schema";
 import type { ActionResult } from "@/types/api";
 import type { UserSummary } from "@/repositories/user.repository";
 import type { UserWithStats } from "@/services/user-admin.service";
@@ -180,6 +184,49 @@ export async function updateSettings(input: unknown) {
     const parsed = parseOrThrow(updateSettingsSchema, input);
     const result = await settingsService.updateSettings(parsed);
     revalidatePath("/admin-panel/settings");
+    return result;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Community Template review (Community Template System)
+// ---------------------------------------------------------------------------
+
+export async function getPendingReviewTemplates() {
+  return toActionResult(async () => {
+    await requireAdminUserId();
+    return communityTemplateService.getPendingReview();
+  });
+}
+
+export async function reviewTemplate(input: unknown) {
+  return toActionResult(async () => {
+    const adminId = await requireAdminUserId();
+    const parsed = parseOrThrow(reviewDecisionSchema, input);
+    const result = await communityTemplateService.reviewTemplate(adminId, parsed);
+    revalidatePath("/admin-panel/reviews");
+    revalidatePath("/admin-panel/templates");
+    return result;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+export async function getReports() {
+  return toActionResult(async () => {
+    await requireAdminUserId();
+    return reportService.getAllReportsForAdmin();
+  });
+}
+
+export async function updateReportStatus(input: unknown) {
+  return toActionResult(async () => {
+    await requireAdminUserId();
+    const parsed = parseOrThrow(updateReportStatusSchema, input);
+    const result = await reportService.updateReportStatus(parsed.id, parsed.status);
+    revalidatePath("/admin-panel/reports");
     return result;
   });
 }

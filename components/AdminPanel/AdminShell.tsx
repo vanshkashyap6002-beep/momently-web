@@ -14,6 +14,8 @@ import {
   LayoutTemplate,
   BarChart3,
   Settings,
+  ClipboardCheck,
+  Flag,
   LogOut,
   Menu,
   X,
@@ -28,6 +30,8 @@ const navItems = [
   { href: "/admin-panel/orders", label: "Orders", icon: ShoppingBag },
   { href: "/admin-panel/projects", label: "Projects", icon: FolderKanban },
   { href: "/admin-panel/templates", label: "Templates", icon: LayoutTemplate },
+  { href: "/admin-panel/reviews", label: "Reviews", icon: ClipboardCheck },
+  { href: "/admin-panel/reports", label: "Reports", icon: Flag },
   { href: "/admin-panel/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin-panel/settings", label: "Settings", icon: Settings },
 ];

@@ -44,6 +44,15 @@ enum ProjectStatus {
   PUBLISHED
 }
 
+/// Community Template System — a submitted template's moderation state.
+enum TemplateReviewStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
 /// Type of a Media asset attached to a Project.
 enum MediaType {
   IMAGE
@@ -87,6 +96,8 @@ model User {
   projects Project[]
   payments Payment[]
   authTokens AuthToken[]
+  reportsSubmitted Report[] @relation("ReportsSubmitted")
+  reportsReceived  Report[] @relation("ReportsReceived")
   createdTemplates Template[] @relation("TemplateCreator")
   profile Profile?
 
@@ -129,8 +140,25 @@ model Template {
   creatorId String?
   creator   User?   @relation("TemplateCreator", fields: [creatorId], references: [id], onDelete: SetNull)
 
+  // Community Template System — workflow state for user-submitted
+  // templates. Defaults to APPROVED so every existing (admin-authored)
+  // template is completely unaffected: only newly-created, creator-owned
+  // drafts start at DRAFT and move through the pipeline below.
+  //   DRAFT -> PENDING_REVIEW -> APPROVED (visible, same as today)
+  //                           -> REJECTED
+  //                           -> NEEDS_CHANGES (creator can revise & resubmit)
+  reviewStatus    TemplateReviewStatus @default(APPROVED)
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      String? // admin User.id who last actioned this review
+  reviewNote      String?              @db.Text // rejection reason / requested changes
+  // Results of the automated pre-screen (lib/content-scanner.ts) — shown
+  // to the admin alongside the submission, never used to auto-reject.
+  autoFlags       Json?
+
   // A single template can be the basis for many user Projects.
   projects Project[]
+  reports  Report[]
 
   createdAt DateTime @default(now())
 
@@ -139,6 +167,7 @@ model Template {
   @@index([isPremium])
   @@index([createdAt])
   @@index([creatorId])
+  @@index([reviewStatus])
   @@map("templates")
 }
 
@@ -343,4 +372,58 @@ model Profile {
   updatedAt DateTime @updatedAt
 
   @@map("profiles")
+}
+
+// ----------------------------------------------------------------------------
+// Report System
+// ----------------------------------------------------------------------------
+
+enum ReportTargetType {
+  TEMPLATE
+  CREATOR
+}
+
+enum ReportReason {
+  SPAM
+  COPYRIGHT
+  ADULT_CONTENT
+  SCAM
+  MALICIOUS_LINKS
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+/// A user-filed report against a Template or a Creator (User). Exactly one
+/// of templateId/targetUserId is set, matching targetType — enforced in
+/// report.service.ts, not at the schema level (Prisma has no CHECK
+/// constraint support here without raw SQL, which this codebase avoids).
+model Report {
+  id         String           @id @default(cuid())
+  targetType ReportTargetType
+  reason     ReportReason
+  details    String?          @db.Text
+  status     ReportStatus     @default(OPEN)
+
+  reporterId String
+  reporter   User   @relation("ReportsSubmitted", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  templateId String?
+  template   Template? @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  targetUserId String?
+  targetUser   User?   @relation("ReportsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([targetType])
+  @@index([status])
+  @@index([templateId])
+  @@index([targetUserId])
+  @@map("reports")
 }

@@ -28,7 +28,7 @@ export default async function TemplateDetailPage({
         <div className="container-page grid md:grid-cols-2 gap-12 items-start">
           <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden">
             <Image
-              src={`https://picsum.photos/seed/${template.previewImageSeed}/900/700`}
+              src={`https://picsum.photos/seed/${template!.previewImageSeed}/900/700`}
               alt={`${template.name} preview`}
               fill
               className="object-cover"
