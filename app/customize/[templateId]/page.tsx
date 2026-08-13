@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { projectService } from "@/services/project.service";
+import type { ProjectWithMedia } from "@/repositories/project.repository";
 import { paymentService } from "@/services/payment.service";
 import { projectToEditableState } from "@/lib/project-mapper";
 import { StudioProvider } from "@/hooks/use-memory-studio";
 import { MemoryStudio } from "@/components/Customization/MemoryStudio";
 import { marketplaceTemplates } from "@/lib/marketplace-data";
+import { NotFoundError } from "@/lib/errors";
 import type { EditableStudioState } from "@/types/studio";
 
 // Explicit, even though getServerSession() reading cookies already
@@ -42,11 +44,16 @@ export default async function CustomizePage({
   // Guarantees a DRAFT Project row exists before the Studio ever renders,
   // so every media upload has a real projectId to attach to from the very
   // first photo — not just after the user manually clicks Save Draft.
-  const project = await projectService.getOrCreateStudioProject(
-    session.user.id,
-    templateId,
-    templateName
-  );
+  // templateId that isn't a real database template and isn't one of the
+  // known marketplace templates now 404s here (see audit finding H2)
+  // instead of silently creating an unreviewed Template row.
+  let project: ProjectWithMedia;
+  try {
+    project = await projectService.getOrCreateStudioProject(session.user.id, templateId, templateName);
+  } catch (err) {
+    if (err instanceof NotFoundError) notFound();
+    throw err;
+  }
 
   // Premium templates require payment before editing even starts — not
   // just before publishing. Free templates skip straight through.

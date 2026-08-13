@@ -3,10 +3,33 @@ import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { marketplaceTemplates } from "@/lib/marketplace-data";
+import { marketplaceTemplates, toMarketplaceTemplate } from "@/lib/marketplace-data";
+import { templateService } from "@/services/template.service";
+import { NotFoundError } from "@/lib/errors";
+import type { MarketplaceTemplate } from "@/types";
 
 export function generateStaticParams() {
   return marketplaceTemplates.map((t) => ({ slug: t.slug }));
+}
+
+// Slugs outside the static list (e.g. a community template approved after
+// this build) still resolve — looked up from the database on demand rather
+// than 404ing. Deliberately not querying the database inside
+// generateStaticParams itself: this project has already hit a "Can't reach
+// database server" build-time failure once from a route that touched the
+// DB at build time (audit finding, see the force-dynamic comments
+// elsewhere in the app).
+async function findTemplate(slug: string): Promise<MarketplaceTemplate | null> {
+  const dummy = marketplaceTemplates.find((t) => t.slug === slug);
+  if (dummy) return dummy;
+
+  try {
+    const dbTemplate = await templateService.getTemplateBySlug(slug);
+    return toMarketplaceTemplate(dbTemplate);
+  } catch (err) {
+    if (err instanceof NotFoundError) return null;
+    throw err;
+  }
 }
 
 export default async function TemplateDetailPage({
@@ -15,7 +38,7 @@ export default async function TemplateDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const template = marketplaceTemplates.find((t) => t.slug === slug);
+  const template = await findTemplate(slug);
 
   if (!template) {
     notFound();

@@ -1,9 +1,11 @@
+import type { Template, User } from "@prisma/client";
 import type {
   MarketplaceTemplate,
   Occasion,
   Theme,
   Style,
   Mood,
+  TemplateAccent,
 } from "@/types";
 
 const occasions: Occasion[] = [
@@ -158,3 +160,64 @@ export const filterOptions = {
     { label: "₹1,500+", min: 1500, max: Infinity },
   ],
 };
+
+// ---- Real-database bridge — added to connect the Marketplace UI to actual
+// approved Template rows (audit finding C2). Everything above this line is
+// untouched original dummy data. ----
+
+const KNOWN_OCCASIONS: readonly Occasion[] = occasions;
+
+/** The 4 core occasions have a dedicated accent color; every other occasion
+ * (including ones this component of the audit doesn't control, like a
+ * community creator's freeform `category` string) is bucketed into the
+ * closest one, mirroring how the existing dummy data already aliases e.g.
+ * Valentine -> "anniversary" and Graduation -> "wedding" above. */
+const ACCENT_BY_OCCASION: Record<Occasion, TemplateAccent> = {
+  Birthday: "birthday",
+  Anniversary: "anniversary",
+  Proposal: "proposal",
+  Wedding: "wedding",
+  Valentine: "anniversary",
+  Graduation: "wedding",
+  "Baby Announcement": "birthday",
+  Farewell: "proposal",
+};
+
+type TemplateForMarketplace = Template & {
+  creator?: Pick<User, "fullName"> | null;
+};
+
+/**
+ * Adapts a real, database-backed Template row (already filtered to
+ * isEnabled + APPROVED by the caller — see template.repository.ts) into the
+ * exact MarketplaceTemplate shape the existing Marketplace UI
+ * (TemplateGrid/TemplateCard/filters) already renders, so none of that UI
+ * needs to change to display real templates alongside the dummy ones.
+ *
+ * The real schema doesn't track theme/mood/likes/views, so those get a
+ * fixed, honest default rather than a fabricated value.
+ */
+export function toMarketplaceTemplate(template: TemplateForMarketplace): MarketplaceTemplate {
+  const occasion = (KNOWN_OCCASIONS as readonly string[]).includes(template.category)
+    ? (template.category as Occasion)
+    : "Birthday";
+
+  return {
+    id: template.id,
+    slug: template.slug,
+    name: template.title,
+    occasion,
+    theme: "Elegant",
+    style: "Editorial",
+    mood: "Warm",
+    price: Number(template.price),
+    likes: 0,
+    views: 0,
+    creator: {
+      name: template.creator?.fullName ?? "Momently",
+      avatarSeed: template.creatorId ?? template.slug,
+    },
+    previewImageSeed: template.slug,
+    accent: ACCENT_BY_OCCASION[occasion],
+  };
+}

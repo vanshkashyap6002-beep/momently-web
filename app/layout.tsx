@@ -1,52 +1,45 @@
-import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
-import "./globals.css";
-import { Providers } from "./providers";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { AdminShell } from "@/components/AdminPanel/AdminShell";
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  weight: ["500", "600", "700"],
-  display: "swap",
-});
+// Explicit, even though getServerSession() reading cookies already
+// implicitly forces this — this route deals with per-user, per-request
+// data and must never be statically cached.
+export const dynamic = "force-dynamic";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
-
-export const metadata: Metadata = {
-  title: "Momently — Every Memory Deserves Its Own Place on the Internet",
-  description:
-    "Create beautiful, interactive memory websites for birthdays, anniversaries, proposals, and every unforgettable moment.",
-  metadataBase: new URL("https://momently.com"),
-  openGraph: {
-    title: "Momently",
-    description:
-      "Create beautiful, interactive memory websites for birthdays, anniversaries, proposals, and every unforgettable moment.",
-    type: "website",
-  },
+export const metadata = {
+  title: "Admin — Momently",
+  // Deliberately not linked anywhere in the app's nav/footer/sitemap;
+  // robots meta is an extra layer against it showing up in search results.
+  robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en" className={`${playfair.variable} ${inter.variable}`} suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;if(d)document.documentElement.classList.add("dark");}catch(e){}})();`,
-          }}
-        />
-      </head>
-      <body>
-        <Providers>{children}</Providers>
-      </body>
-    </html>
-  );
+export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+
+  // Middleware (see middleware.ts) already redirects unauthenticated
+  // visitors to /login and returns 403 for signed-in non-admins before
+  // this layout ever runs. This check is a second, independent line of
+  // defense at the server-component level — "never trust a single layer"
+  // — not the primary gate.
+  if (!session?.user?.id) {
+    redirect("/login?callbackUrl=/admin-panel");
+  }
+
+  if (session.user.role !== "ADMIN") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-paper dark:bg-ink px-6 text-center">
+        <div>
+          <p className="eyebrow">Admin Panel</p>
+          <h1 className="mt-3 font-display text-2xl text-ink dark:text-paper">403 — Forbidden</h1>
+          <p className="mt-2 text-sm text-ink/55 dark:text-paper/55">
+            You don&apos;t have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <AdminShell adminName={session.user.name ?? session.user.email ?? "Admin"}>{children}</AdminShell>;
 }

@@ -1,8 +1,6 @@
 import type { NextRequest } from "next/server";
 import { toRouteResponse } from "@/lib/api-response";
-import { parseOrThrow } from "@/lib/validation";
 import { templateService } from "@/services/template.service";
-import { listTemplatesQuerySchema } from "@/validators/template.schema";
 
 // Never statically prerendered/cached — this route always touches the
 // database and/or the current request's auth state. Without this,
@@ -11,14 +9,14 @@ import { listTemplatesQuerySchema } from "@/validators/template.schema";
 // is exactly what caused the "Can't reach database server" build error.
 export const dynamic = "force-dynamic";
 
-/** GET /api/templates?category=Birthday&isPremium=false — public, no auth. */
-export async function GET(request: NextRequest) {
+interface RouteParams {
+  params: Promise<{ slug: string }>;
+}
+
+/** GET /api/templates/[slug] — public, no auth. */
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   return toRouteResponse(async () => {
-    const { searchParams } = new URL(request.url);
-    const query = parseOrThrow(listTemplatesQuerySchema, {
-      category: searchParams.get("category") ?? undefined,
-      isPremium: searchParams.get("isPremium") ?? undefined,
-    });
-    return templateService.getTemplates(query);
+    const { slug } = await params;
+    return templateService.getTemplateBySlug(slug);
   });
 }

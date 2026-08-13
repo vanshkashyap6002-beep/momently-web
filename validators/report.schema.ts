@@ -8,9 +8,13 @@ export const createReportSchema = z
     templateId: z.string().trim().min(1).optional(),
     targetUserId: z.string().trim().min(1).optional(),
   })
-  .refine((data) => (data.targetType === "TEMPLATE" ? Boolean(data.templateId) : Boolean(data.targetUserId)), {
-    message: "Missing the id of what's being reported.",
-  });
+  .refine(
+    (data) =>
+      data.targetType === "TEMPLATE"
+        ? Boolean(data.templateId) && !data.targetUserId
+        : Boolean(data.targetUserId) && !data.templateId,
+    { message: "A report must reference exactly one template or creator, not both." }
+  );
 export type CreateReportInput = z.infer<typeof createReportSchema>;
 
 export const updateReportStatusSchema = z.object({

@@ -1,30 +1,93 @@
+import { notFound } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
+import { marketplaceTemplates, toMarketplaceTemplate } from "@/lib/marketplace-data";
 import { templateService } from "@/services/template.service";
-import { TemplatesTable } from "@/components/AdminPanel/TemplatesTable";
+import { NotFoundError } from "@/lib/errors";
+import type { MarketplaceTemplate } from "@/types";
 
-export default async function AdminTemplatesPage() {
-  const templates = await templateService.getAllTemplatesForAdmin();
+export function generateStaticParams() {
+  return marketplaceTemplates.map((t) => ({ slug: t.slug }));
+}
+
+// Slugs outside the static list (e.g. a community template approved after
+// this build) still resolve — looked up from the database on demand rather
+// than 404ing. Deliberately not querying the database inside
+// generateStaticParams itself: this project has already hit a "Can't reach
+// database server" build-time failure once from a route that touched the
+// DB at build time (audit finding, see the force-dynamic comments
+// elsewhere in the app).
+async function findTemplate(slug: string): Promise<MarketplaceTemplate | null> {
+  const dummy = marketplaceTemplates.find((t) => t.slug === slug);
+  if (dummy) return dummy;
+
+  try {
+    const dbTemplate = await templateService.getTemplateBySlug(slug);
+    return toMarketplaceTemplate(dbTemplate);
+  } catch (err) {
+    if (err instanceof NotFoundError) return null;
+    throw err;
+  }
+}
+
+export default async function TemplateDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const template = await findTemplate(slug);
+
+  if (!template) {
+    notFound();
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="eyebrow">Admin Panel</p>
-          <h1 className="mt-2 font-display text-2xl md:text-3xl text-ink dark:text-paper">Templates</h1>
-          <p className="mt-1 text-sm text-ink/55 dark:text-paper/55">{templates.length} total</p>
-        </div>
-        <Link
-          href="/admin-panel/templates/new"
-          className="flex items-center gap-1.5 rounded-full bg-love px-4 py-2.5 text-sm font-medium text-paper hover:bg-love-dark transition-colors"
-        >
-          <Plus className="h-4 w-4" /> New Template
-        </Link>
-      </div>
+    <>
+      <Navbar />
+      <main className="pt-32 pb-24">
+        <div className="container-page grid md:grid-cols-2 gap-12 items-start">
+          <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden">
+            <Image
+              src={`https://picsum.photos/seed/${template.previewImageSeed}/900/700`}
+              alt={`${template.name} preview`}
+              fill
+              className="object-cover"
+            />
+          </div>
 
-      <div className="mt-6">
-        <TemplatesTable templates={templates} />
-      </div>
-    </div>
+          <div>
+            <p className="eyebrow">{template.occasion}</p>
+            <h1 className="mt-3 font-display text-3xl md:text-4xl tracking-tightest">
+              {template.name}
+            </h1>
+            <p className="mt-3 text-sm text-ink/60 dark:text-paper/60">
+              By {template.creator.name} &middot; {template.style} &middot; {template.mood}
+            </p>
+
+            <div className="mt-8 flex items-center gap-4">
+              <span className="font-display text-2xl text-ink dark:text-paper">
+                {template.price === 0 ? "Free" : `₹${template.price}`}
+              </span>
+              <Link
+                href={`/customize/${template.slug}`}
+                className="rounded-full bg-love px-7 py-3 text-sm font-medium text-paper hover:bg-love-dark transition-colors"
+              >
+                Use Template
+              </Link>
+              <Link
+                href="/marketplace"
+                className="text-sm text-ink/60 dark:text-paper/60 hover:text-love dark:hover:text-blush"
+              >
+                Back to Marketplace
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
   );
 }

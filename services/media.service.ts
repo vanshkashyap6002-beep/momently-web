@@ -2,8 +2,9 @@ import { mediaRepository } from "@/repositories/media.repository";
 import { projectRepository } from "@/repositories/project.repository";
 import { mediaStorage } from "@/lib/supabase-storage";
 import { UPLOAD_CONSTRAINTS } from "@/validators/media.schema";
-import { NotFoundError, RateLimitError } from "@/lib/errors";
+import { NotFoundError, RateLimitError, ValidationError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { verifyFileSignature } from "@/lib/file-signature";
 import type { UploadKind, ReorderItem } from "@/types/media";
 import type { Media } from "@prisma/client";
 
@@ -39,6 +40,18 @@ async function uploadMediaOfKind(
   const constraint = UPLOAD_CONSTRAINTS[kind];
 
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // The file's REAL bytes must match one of this kind's allowed formats —
+  // filename extension and browser-supplied Content-Type (checked above,
+  // in validators/media.schema.ts) are both trivially spoofable and were,
+  // before this fix, the only checks performed. Audit finding H1.
+  const detected = verifyFileSignature(buffer, constraint.extensions);
+  if (!detected) {
+    throw new ValidationError(
+      `That file doesn't look like a valid ${constraint.extensions.join("/")} file. Please choose a different file.`
+    );
+  }
+
   const uploaded = await mediaStorage.upload({
     buffer,
     folder: constraint.storageFolder,
@@ -54,7 +67,9 @@ async function uploadMediaOfKind(
     publicId: uploaded.publicId,
     filename: file.name,
     fileSize: file.size,
-    mimeType: file.type,
+    // The sniffed type from the real file content, not the client-supplied
+    // file.type — the two could otherwise disagree (audit finding M1).
+    mimeType: detected.mimeType,
     order,
     project: { connect: { id: projectId } },
   });
@@ -94,6 +109,14 @@ export const mediaService = {
     const constraint = UPLOAD_CONSTRAINTS[existing.type as UploadKind];
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    const detected = verifyFileSignature(buffer, constraint.extensions);
+    if (!detected) {
+      throw new ValidationError(
+        `That file doesn't look like a valid ${constraint.extensions.join("/")} file. Please choose a different file.`
+      );
+    }
+
     const uploaded = await mediaStorage.upload({
       buffer,
       folder: constraint.storageFolder,
@@ -112,7 +135,7 @@ export const mediaService = {
       publicId: uploaded.publicId,
       filename: file.name,
       fileSize: file.size,
-      mimeType: file.type,
+      mimeType: detected.mimeType,
     });
   },
 

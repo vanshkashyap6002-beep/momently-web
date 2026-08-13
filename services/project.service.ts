@@ -102,6 +102,20 @@ export const projectService = {
     return projectRepository.findManyByUserId(userId);
   },
 
+  /**
+   * The public read path for a shared memory page — no ownership check,
+   * because there's no owner to check against for an anonymous visitor.
+   * Only ever returns a project whose status is PUBLISHED; a draft project
+   * (or any other status) is reported as not found, exactly like an
+   * unauthorized owned-project lookup elsewhere in this file, so a guess at
+   * someone else's draft slug can't be used to peek at unpublished content.
+   */
+  async getPublicProject(slug: string): Promise<ProjectWithMedia> {
+    const project = await projectRepository.findPublishedBySlug(slug);
+    if (!project) throw new NotFoundError("This memory page isn't available.");
+    return project;
+  },
+
   /** Read used by the Studio on load — unlike `getProject`, a missing
    * project here just means "nothing saved yet," not an error. Prefer
    * `getOrCreateStudioProject` for any flow (like uploads) that needs a

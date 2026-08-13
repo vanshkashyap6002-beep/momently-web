@@ -1,16 +1,26 @@
 import { templateRepository, type TemplateFilters } from "@/repositories/template.repository";
-import { marketplaceTemplates } from "@/lib/marketplace-data";
+import { marketplaceTemplates, toMarketplaceTemplate } from "@/lib/marketplace-data";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import type { Template, Prisma } from "@prisma/client";
 import type { CreateTemplateInput, UpdateTemplateInput } from "@/validators/template.schema";
+import type { MarketplaceTemplate } from "@/types";
 
 export const templateService = {
   getTemplates(filters: TemplateFilters): Promise<Template[]> {
     return templateRepository.findMany(filters);
   },
 
+  // Real, DB-backed, approved templates in the exact shape the Marketplace
+  // UI already knows how to render (see lib/marketplace-data.ts). Used to
+  // connect the Marketplace to actual community/admin templates — audit
+  // finding C2.
+  async getMarketplaceTemplates(): Promise<MarketplaceTemplate[]> {
+    const templates = await templateRepository.findManyPublicWithCreator();
+    return templates.map(toMarketplaceTemplate);
+  },
+
   async getTemplateBySlug(slug: string): Promise<Template> {
-    const template = await templateRepository.findBySlug(slug);
+    const template = await templateRepository.findPublicBySlug(slug);
     if (!template) throw new NotFoundError("Template not found.");
     return template;
   },
@@ -36,17 +46,25 @@ export const templateService = {
 
     const dummy = marketplaceTemplates.find((t) => t.slug === slug);
 
+    // Only ever bridge a KNOWN marketplace slug into a real row. Any other
+    // slug reaching here isn't an existing DB template and isn't one of the
+    // curated dummy templates either — creating a row for it would seed the
+    // shared Template table with an unreviewed entry that inherits the
+    // schema's isEnabled/reviewStatus defaults (true / APPROVED), letting it
+    // bypass community moderation entirely. See audit finding H2.
+    if (!dummy) {
+      throw new NotFoundError("Template not found.");
+    }
+
     const created = await templateRepository.create({
       slug,
-      title: dummy?.name ?? "Untitled Template",
-      category: dummy?.occasion ?? "General",
-      thumbnail: dummy
-        ? `https://picsum.photos/seed/${dummy.previewImageSeed}/640/480`
-        : `https://picsum.photos/seed/${slug}/640/480`,
+      title: dummy.name,
+      category: dummy.occasion,
+      thumbnail: `https://picsum.photos/seed/${dummy.previewImageSeed}/640/480`,
       previewImages: [],
-      description: dummy ? `${dummy.style} template in the ${dummy.occasion} category.` : "",
-      isPremium: (dummy?.price ?? 0) > 0,
-      price: dummy?.price ?? 0,
+      description: `${dummy.style} template in the ${dummy.occasion} category.`,
+      isPremium: dummy.price > 0,
+      price: dummy.price,
     });
 
     return created.id;

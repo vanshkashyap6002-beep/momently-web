@@ -31,6 +31,18 @@ export const projectRepository = {
     return db.project.findUnique({ where: { slug }, include: withOrderedMedia });
   },
 
+  // Public-facing: only a PUBLISHED project may be found this way. Used by
+  // the public memory page route — see services/project.service.ts's
+  // getPublicProject. Deliberately separate from findBySlug above, which
+  // the Studio's own owner-scoped lookup needs to see a project of ANY
+  // status (including DRAFT, before it's ever been published).
+  findPublishedBySlug(slug: string, db: Db = prisma): Promise<ProjectWithMedia | null> {
+    return db.project.findFirst({
+      where: { slug, status: "PUBLISHED" },
+      include: withOrderedMedia,
+    });
+  },
+
   findManyByUserId(userId: string, db: Db = prisma): Promise<ProjectWithMedia[]> {
     return db.project.findMany({
       where: { userId },
