@@ -61,3 +61,48 @@
     scroll-behavior: auto !important;
   }
 }
+/* --- EMOTIONAL UI ANIMATION KEYFRAMES --- */
+@keyframes floatHeart {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--tw-opacity, 0.25);
+  }
+  90% {
+    opacity: var(--tw-opacity, 0.25);
+  }
+  100% {
+    transform: translateY(-105vh) translateX(15px) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 0.03;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.06;
+    transform: scale(1.08);
+  }
+}
+
+.animate-float-heart {
+  animation: floatHeart 15s linear infinite;
+  will-change: transform, opacity;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 8s ease-in-out infinite;
+}
+
+/* Reduced Motion Safety */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-heart,
+  .animate-pulse-slow {
+    animation: none !important;
+  }
+}

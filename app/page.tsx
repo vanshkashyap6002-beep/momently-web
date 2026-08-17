@@ -7,6 +7,9 @@ import { FeaturedTemplates } from "@/components/sections/featured-templates";
 import { Testimonials } from "@/components/sections/testimonials";
 import { Pricing } from "@/components/sections/pricing";
 import { Faq } from "@/components/sections/faq";
+import FloatingHearts from "@/components/animations/FloatingHearts";
+import BloomCorners from "@/components/animations/BloomCorners";
+import IntroOverlay from "@/components/animations/IntroOverlay";
 
 export default function Home() {
   return (
