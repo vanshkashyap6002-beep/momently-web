@@ -1,91 +1,25 @@
-import { notFound } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { marketplaceTemplates, toMarketplaceTemplate } from "@/lib/marketplace-data";
-import { templateService } from "@/services/template.service";
-import { NotFoundError } from "@/lib/errors";
-import type { MarketplaceTemplate } from "@/types";
+import { HeroSection } from "@/components/hero/hero-section";
+import { WhyChooseUs } from "@/components/sections/why-choose-us";
+import { HowItWorks } from "@/components/sections/how-it-works";
+import { FeaturedTemplates } from "@/components/sections/featured-templates";
+import { Testimonials } from "@/components/sections/testimonials";
+import { Pricing } from "@/components/sections/pricing";
+import { Faq } from "@/components/sections/faq";
 
-export function generateStaticParams() {
-  return marketplaceTemplates.map((t) => ({ slug: t.slug }));
-}
-
-// Slugs outside the static list (e.g. a community template approved after
-// this build) still resolve — looked up from the database on demand rather
-// than 404ing. Deliberately not querying the database inside
-// generateStaticParams itself: this project has already hit a "Can't reach
-// database server" build-time failure once from a route that touched the
-// DB at build time (audit finding, see the force-dynamic comments
-// elsewhere in the app).
-async function findTemplate(slug: string): Promise<MarketplaceTemplate | null> {
-  const dummy = marketplaceTemplates.find((t) => t.slug === slug);
-  if (dummy) return dummy;
-
-  try {
-    const dbTemplate = await templateService.getTemplateBySlug(slug);
-    return toMarketplaceTemplate(dbTemplate);
-  } catch (err) {
-    if (err instanceof NotFoundError) return null;
-    throw err;
-  }
-}
-
-export default async function TemplateDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const template = await findTemplate(slug);
-
-  if (!template) {
-    notFound();
-  }
-
+export default function Home() {
   return (
     <>
-      <Navbar/>
-      <main className="pt-32 pb-24">
-        <div className="container-page grid md:grid-cols-2 gap-12 items-start">
-          <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden">
-            <Image
-              src={`https://picsum.photos/seed/${template.previewImageSeed}/900/700`}
-              alt={`${template.name} preview`}
-              fill
-              className="object-cover"
-            />
-          </div>
-
-          <div>
-            <p className="eyebrow">{template.occasion}</p>
-            <h1 className="mt-3 font-display text-3xl md:text-4xl tracking-tightest">
-              {template.name}
-            </h1>
-            <p className="mt-3 text-sm text-ink/60 dark:text-paper/60">
-              By {template.creator.name} &middot; {template.style} &middot; {template.mood}
-            </p>
-
-            <div className="mt-8 flex items-center gap-4">
-              <span className="font-display text-2xl text-ink dark:text-paper">
-                {template.price === 0 ? "Free" : `₹${template.price}`}
-              </span>
-              <Link
-                href={`/customize/${template.slug}`}
-                className="rounded-full bg-love px-7 py-3 text-sm font-medium text-paper hover:bg-love-dark transition-colors"
-              >
-               Use Template
-              </Link>
-              <Link
-                href="/marketplace"
-                className="text-sm text-ink/60 dark:text-paper/60 hover:text-love dark:hover:text-blush"
-              >
-              Back to Marketplace
-              </Link>
-            </div>
-          </div>
-        </div>
+      <Navbar />
+      <main>
+        <HeroSection />
+        <WhyChooseUs />
+        <HowItWorks />
+        <FeaturedTemplates />
+        <Testimonials />
+        <Pricing />
+        <Faq />
       </main>
       <Footer />
     </>
