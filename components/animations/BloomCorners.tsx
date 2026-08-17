@@ -1,4 +1,14 @@
-export default function BloomCorners() {
+import type { JSX } from 'react';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      div: any;
+    }
+  }
+}
+
+export default function BloomCorners(): JSX.Element {
   return (
     <div
       aria-hidden="true"
