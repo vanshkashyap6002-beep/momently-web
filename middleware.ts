@@ -1,9 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
-// A small, on-brand (same color tokens as the rest of the app) 403 page —
-// middleware can't render React/Tailwind, so this is deliberately just
-// inline-styled HTML, kept intentionally minimal.
 const FORBIDDEN_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8" /><title>403 — Forbidden</title></head>
@@ -20,10 +17,6 @@ export default withAuth(
   function middleware(req) {
     const { pathname } = req.nextUrl;
 
-    // Extra check layered on top of withAuth's own "must be signed in"
-    // gate (below) — Admin Panel routes additionally require role ADMIN.
-    // A signed-in non-admin gets a 403, not a redirect (redirecting them
-    // back to /login would just loop, since they ARE logged in).
     if (pathname.startsWith("/admin-panel")) {
       const token = req.nextauth.token;
       if (token?.role !== "ADMIN") {
@@ -39,10 +32,6 @@ export default withAuth(
   {
     pages: { signIn: "/login" },
     callbacks: {
-      // Unchanged from the previous default behavior: every matched path
-      // (including the existing /customize and /checkout) requires a
-      // signed-in user, redirecting to /login otherwise. The admin-only
-      // role check above only runs once this already passes.
       authorized: ({ token }) => Boolean(token),
     },
   }

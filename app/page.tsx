@@ -46,7 +46,7 @@ export default async function TemplateDetailPage({
 
   return (
     <>
-      <Navbar />
+      <Navbar/>
       <main className="pt-32 pb-24">
         <div className="container-page grid md:grid-cols-2 gap-12 items-start">
           <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden">
@@ -75,13 +75,13 @@ export default async function TemplateDetailPage({
                 href={`/customize/${template.slug}`}
                 className="rounded-full bg-love px-7 py-3 text-sm font-medium text-paper hover:bg-love-dark transition-colors"
               >
-                Use Template
+               Use Template
               </Link>
               <Link
                 href="/marketplace"
                 className="text-sm text-ink/60 dark:text-paper/60 hover:text-love dark:hover:text-blush"
               >
-                Back to Marketplace
+              Back to Marketplace
               </Link>
             </div>
           </div>

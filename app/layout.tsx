@@ -1,45 +1,62 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { AdminShell } from "@/components/AdminPanel/AdminShell";
+import type { Metadata } from "next";
+import type { CSSProperties } from "react";
+// Self-hosted via @fontsource instead of next/font/google: identical font
+// families/weights (Playfair Display 500/600/700, Inter 400/500/600), but
+// the actual font files ship inside the npm package and are bundled at
+// build time like any other static asset — no fetch to Google's servers
+// during `next build`. That external fetch was the sole cause of the
+// production build failures ("Failed to fetch font file from
+// fonts.gstatic.com"); this removes the dependency entirely rather than
+// hoping the network is reliable on any given build.
+import "@fontsource/playfair-display/latin-500.css";
+import "@fontsource/playfair-display/latin-600.css";
+import "@fontsource/playfair-display/latin-700.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "./globals.css";
+import { Providers } from "./providers";
 
-// Explicit, even though getServerSession() reading cookies already
-// implicitly forces this — this route deals with per-user, per-request
-// data and must never be statically cached.
-export const dynamic = "force-dynamic";
+// Same CSS custom properties Tailwind already reads (see
+// tailwind.config.ts's fontFamily.display / fontFamily.body) — only the
+// mechanism supplying their values changed, not the variables themselves,
+// so nothing downstream (Tailwind config, any component using font-display
+// / font-body classes) needs to change.
+const fontVariables = {
+  "--font-playfair": "'Playfair Display', serif",
+  "--font-inter": "'Inter', sans-serif",
+} as CSSProperties;
 
-export const metadata = {
-  title: "Admin — Momently",
-  // Deliberately not linked anywhere in the app's nav/footer/sitemap;
-  // robots meta is an extra layer against it showing up in search results.
-  robots: { index: false, follow: false },
+export const metadata: Metadata = {
+  title: "Momently — Every Memory Deserves Its Own Place on the Internet",
+  description:
+    "Create beautiful, interactive memory websites for birthdays, anniversaries, proposals, and every unforgettable moment.",
+  metadataBase: new URL("https://momently.com"),
+  openGraph: {
+    title: "Momently",
+    description:
+      "Create beautiful, interactive memory websites for birthdays, anniversaries, proposals, and every unforgettable moment.",
+    type: "website",
+  },
 };
 
-export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-
-  // Middleware (see middleware.ts) already redirects unauthenticated
-  // visitors to /login and returns 403 for signed-in non-admins before
-  // this layout ever runs. This check is a second, independent line of
-  // defense at the server-component level — "never trust a single layer"
-  // — not the primary gate.
-  if (!session?.user?.id) {
-    redirect("/login?callbackUrl=/admin-panel");
-  }
-
-  if (session.user.role !== "ADMIN") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-paper dark:bg-ink px-6 text-center">
-        <div>
-          <p className="eyebrow">Admin Panel</p>
-          <h1 className="mt-3 font-display text-2xl text-ink dark:text-paper">403 — Forbidden</h1>
-          <p className="mt-2 text-sm text-ink/55 dark:text-paper/55">
-            You don&apos;t have permission to access this page.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return <AdminShell adminName={session.user.name ?? session.user.email ?? "Admin"}>{children}</AdminShell>;
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" style={fontVariables} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;if(d)document.documentElement.classList.add("dark");}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
 }
