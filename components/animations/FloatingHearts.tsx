@@ -34,7 +34,7 @@ export default function FloatingHearts() {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none overflow-hidden z-0 motion-reduce:hidden"
+      className="fixed inset-0 -z-10 pointer-events-none overflow-hidden motion-reduce:hidden"
     >
       {hearts.map((heart) => (
         <svg

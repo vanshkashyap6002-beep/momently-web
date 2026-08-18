@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 import { GoogleSignInButton } from "@/components/AuthGoogleButton";
+import WelcomeTransition from "@/components/animations/WelcomeTransition";
 
 function LoginForm() {
   const router = useRouter();
@@ -16,6 +17,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,12 +37,20 @@ function LoginForm() {
       return;
     }
 
-    router.push(callbackUrl);
-    router.refresh();
+    // Sign-in itself is unchanged above — this only delays the existing
+    // navigation by ~800ms to show a brief welcome moment first.
+    // callbackUrl behavior is untouched; nothing about auth/session logic
+    // is modified here.
+    setShowWelcome(true);
+    setTimeout(() => {
+      router.push(callbackUrl);
+      router.refresh();
+    }, 800);
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-paper dark:bg-ink px-6">
+      {showWelcome && <WelcomeTransition />}
       <div className="w-full max-w-sm">
         <Link href="/" className="font-display text-2xl text-love dark:text-blush">
           Momently

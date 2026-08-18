@@ -1,18 +1,8 @@
-import type { JSX } from 'react';
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      div: any;
-    }
-  }
-}
-
-export default function BloomCorners(): JSX.Element {
+export default function BloomCorners() {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none overflow-hidden z-0 motion-reduce:hidden"
+      className="fixed inset-0 -z-10 pointer-events-none overflow-hidden motion-reduce:hidden"
     >
       {/* Top Left Bloom */}
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-rose-500/5 blur-[120px] animate-pulse-slow" />
